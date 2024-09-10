@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wyszukiwanie kierowców potwierdzających obecność</title>
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+
+        .notification {
+            position: fixed;
+            top: -200px; /* Ukryte poza ekranem na początku */
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: top 0.5s ease; /* Płynne zsuwnanie */
+            z-index: 1000;
+            min-width: 300px;
+            text-align: center;
+            opacity: 0.9;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .file-input-container {
+            display: flex;
+            gap: 10px;
+            align-items: stretch;
+        }
+
+        .file-input-container button {
+            flex: 0 0 150px;
+            font-size: 16px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+            padding: 10px;
+            font-family: inherit;
+        }
+
+        .file-input-container button:hover {
+            background-color: #0056b3;
+        }
+
+        .file-input-container .file-content {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+            overflow-y: auto;
+            min-height: 100px;
+        }
+
+        textarea {
+            /* width: 90%; */
+            height: 100px;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: none;
+            font-family: inherit;
+        }
+
+        #result {
+            padding: 10px;
+            border: 1px solid #ccc;
+            min-height: 40px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+
+        #jsonDrivers {
+          min-height: 200px;
+          max-height: 200px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+            font-family: inherit;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #driver-additional-info {
+          margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            font-size: 14px;
+            position: fixed;
+            top: 200px;
+            left: 200px;
+            width: 300px;
+            height: 200px;
+
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            visibility: hidden;
+
+            justify-content: space-evenly;
+        }
+
+        .driver-info-item {
+          display: flex;
+          align-items: center;
+          gap: 20px;
+          height: auto;
+        }
+
+        .driver-info-item b {
+          max-width: 40%;
+          width: 40%;
+        }
+        
+
+        .legend {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 14px;
+            position: fixed;
+            top: 200px;
+            right: 200px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        #json-file-result {
+          margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 14px;
+            position: fixed;
+            top: 400px;
+            right: 200px;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .square {
+            width: 16px;
+            height: 16px;
+            display: inline-block;
+            border-radius: 2px;
+        }
+
+        .red {
+            background-color: red;
+        }
+
+        .yellow {
+            background-color: yellow;
+        }
+
+        .green {
+            background-color: green;
+        }
+
+        .pointer {
+          cursor: pointer;
+        }
+
+        .result-driver {
+          padding: 5px 10px;
+          margin: 2px 0px 2px 0px;
+          border-radius: 4px;
+        }
+
+        .driver-common {
+          background-color: #C1E1C1;
+        }
+
+        .driver-unsure {
+          background-color: #FFC300;
+        } 
+
+        .driver-absent {
+          background-color: #FF5733;
+        }
+
+        #resultdrivers {
+            overflow: auto;
+            width: 100%;
+        }
+
+        #resultDrivers {
+            border: 1px solid #dededf;
+            height: 100%;
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+            border-spacing: 1px;
+            text-align: left;
+        }
+
+        #resultDrivers caption {
+            caption-side: top;
+            text-align: left;
+        }
+
+        #resultDrivers th {
+            border: 1px solid #dededf;
+            background-color: #eceff1;
+            color: #333;
+            padding: 5px;
+            position: sticky;
+            top: -1px;
+            z-index: 1;
+        }
+
+        #resultDrivers td {
+            border: 1px solid #dededf;
+            color: #333;
+            padding: 5px;
+        }
+
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="file-input-container">
+        <button onclick="document.querySelector('#jsonFile').click()">Załaduj entrylistę JSON</button>
+        <div class="file-content" id="jsonDrivers">Tutaj pojawią się kierowcy z entrylisty</div>
+        <input type="file" id="jsonFile" style="display: none;" accept=".json">
+    </div>
+
+    <span style="margin-top: 10px;">Osoby potwierdzające obecność na Discord</span>
+    <textarea id="discordDrivers" placeholder="Wprowadź kierowców z potwierdzenia obecności na Discord"></textarea>
+    <button id="executeButton">Odszukaj kierowców</button>
+    <div id="resultDrivers-div">
+      <span id="resultDrivers-text">Kierowcy zapisani</span>
+      <table id='resultDrivers'>
+        <thead>
+          <tr>
+            <th>Imię kierowcy</td>
+            <th>Oznaczenie</td>
+            <th>Przyczyna</td>
+          </tr>
+        </thead>
+        <tbody>
+
+        </tbody>
+      </table>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item">
+        <div class="square green"></div>
+        <span>Osoby zapisane, liczba: </span><span id="drivers-common-count"></span>
+      </div>
+      <div class="legend-item">
+          <div class="square yellow"></div>
+          <span>Osoby potencjalnie zapisane, liczba: </span><span id="drivers-unsure-count"></span>
+      </div>
+        <div class="legend-item">
+            <div class="square red"></div>
+            <span>Osoby niezapisane, liczba: </span><span id="drivers-absent-count"></span>
+        </div>
+    </div>
+
+    <!-- <div id='json-file-prepare'>
+      
+      <textarea id='json-file-text' disabled>
+      </textarea>
+    </div> -->
+    <div id='json-file-result'>
+      <button id='json-file-prepare-btn'>Odśwież i skopiuj entrylistę</button>
+      <textarea id='json-file-text' readonly>
+
+      </textarea>
+    </div>
+
+    <div id='driver-additional-info'>
+      <div class='driver-info-item driver-info-top'>
+        <b>Kierowca:</b> <span></span>
+      </div>
+      <div class='driver-info-item driver-info-main'>
+        <b>Nick na Discord:</b> <span class='discord-name'></span>
+      </div>
+      <div class='driver-info-item driver-info-footer'>
+        <b>Steam ID:</b> <span class='steamid'></span>
+      </div>
+    </div>
+
+    <div id="notification" class="notification">
+      <h4 id="notification-header"></h4>
+  </div>
+</div>
+
+<script>
+  const MSG_ERR_COMMONDRIVERS = `błąd podczas wyszukiwania wspólnych danych kierowców! Poinformuj administratora.`;
+
+    window.drivers = window.drivers || {
+      _driversFromJson: [],
+      _driversFromDiscord : [],
+      _resultDrivers: [],
+      _originalDriversDiscord: [],
+      
+      // Funkcja do wyświetlania imion i nazwisk w elemencie #resultDrivers
+      displayResultDrivers() {
+        const HTML_resultDrivers = document.querySelector('#resultDrivers tbody');
+        HTML_resultDrivers.innerHTML = '';
+        HTML_resultDrivers.textContent = '';
+
+        if (this._resultDrivers.length > 0) {
+          this._resultDrivers.map((driver, i) => {
+            const elem_tr = document.createElement('tr');
+            
+            elem_tr.addEventListener('click',     (e) => this.handleDriverClick(e));
+            elem_tr.addEventListener('mouseover', (e) => this.handleDriverMouseOver(e));
+            elem_tr.id = `drivers_result_${i}`;
+            elem_tr.classList = `result-driver pointer ${driver.mark}`
+            elem_tr.setAttribute('discordname', driver?.discordName || "");
+            elem_tr.setAttribute('fullname', driver?.fullName || "");
+            elem_tr.setAttribute('steamid', driver?.steamid || "");
+            
+            const driverFullname_td = document.createElement('td');
+            const driverMark_td     = document.createElement('td');
+            const driverReason_td   = document.createElement('td');
+            
+            driverFullname_td.innerHTML = driver?.fullName || "";
+            driverMark_td.innerHTML     = driver?.markText || "";
+            driverReason_td.innerHTML   = driver?.reason || "";
+            
+            elem_tr.append(driverFullname_td, driverMark_td, driverReason_td);
+            HTML_resultDrivers.appendChild(elem_tr);
+          })
+        } else {
+          HTML_resultDrivers.textContent = 'Nie znaleziono imion i nazwisk w pliku.'; // Informacja, gdy brak dopasowań
+        }
+      },
+
+      // Funkcja do wyświetlania imion i nazwisk w elemencie #jsonDrivers
+      displayJsonDrivers(names) {
+        const HTML_jsonDrivers = document.querySelector('#jsonDrivers');
+
+        if (this._driversFromJson.length > 0) {
+          HTML_jsonDrivers.innerHTML = `<ul>${this._driversFromJson.map(driver => `<li>${driver.fullName}</li>`).join('')}</ul>`;
+        } else {
+          HTML_jsonDrivers.textContent = 'Nie znaleziono imion i nazwisk w pliku.'; // Informacja, gdy brak dopasowań
+        }
+      },
+
+
+      executeCommonDrivers() {
+        console.log('_driversFromJson', this._driversFromJson);
+        console.log('_driversFromDiscord', this._driversFromDiscord);
+
+        if (!this._driversFromDiscord || this._driversFromDiscord.length === 0) {
+          alert('Nie wprowadzono kierowców z Discorda!');
+          return;
+        }
+
+        if (!this._driversFromJson || this._driversFromJson.length === 0) {
+          alert('Nie wczytano pliku JSON lub plik nie zawiera kierowców!');
+          return;
+        }
+
+        
+        this.setCommonDrivers();
+        this.displayResultDrivers();
+        this.updateDriversCount();
+      },
+
+      handleDriverClick(e) {
+        const HTML_Tr = e?.target?.parentElement;
+        const classes = HTML_Tr?.classList;
+
+
+        for (let className of classes) {
+          switch(className) {
+            case 'driver-common':
+              HTML_Tr.classList.remove('driver-common');
+              HTML_Tr.classList.add('driver-absent');
+              break;
+            case 'driver-unsure':
+              HTML_Tr.classList.remove('driver-unsure');
+              HTML_Tr.classList.add('driver-common');
+              break;
+            case 'driver-absent':
+              HTML_Tr.classList.remove('driver-absent');
+              HTML_Tr.classList.add('driver-common');
+              break;
+            default:
+              break;
+          }
+
+          this.updateDriversCount();
+        }
+        
+        
+        // alert('zmieniono kierowcę, blablabla')
+        // TODO jakiś popup informujący o zmianie kierowcy - da rade
+
+        
+      },
+
+      handleDriverMouseOver(e) {
+        const HTML_Tr = e?.target?.parentElement;
+        HTML_addInfo = document.querySelector('#driver-additional-info');
+
+        HTML_addInfo.style.visibility = 'visible';
+        HTML_addInfo.querySelector('.driver-info-top span').innerHTML   = HTML_Tr.getAttribute('fullname');
+        HTML_addInfo.querySelector('.driver-info-main .discord-name').innerHTML  =  HTML_Tr.getAttribute('discordname');
+        HTML_addInfo.querySelector('.driver-info-footer .steamid').innerHTML  =  HTML_Tr.getAttribute('steamid');
+        
+      },
+
+      getCommonDybas(jsonDrivers, discordDrivers) {
+        try {
+          let commonDrivers = [];
+          jsonDrivers = jsonDrivers.map((jsonDriver, index) => {
+            if (Object.keys(jsonDriver).length === 0) return {};
+
+            // split po każdym znaku innym niż a-Z0-9 
+            const [jsonDriverName, jsonDriverSurname] = jsonDriver.fullName.split(/\W/g);
+
+            if (
+              (
+                jsonDriverName !== "mirek"
+                || jsonDriverName !== "miras"
+                || jsonDriverName !== "miroslaw"
+              ) &&
+              (
+                jsonDriverSurname !== "dybas"
+              )
+            ) {
+              return jsonDriver;
+            }
+            else {
+              commonDrivers.push({
+                fullName: this._driversFromJson[index].fullName,
+                mark: 'driver-common',
+                markText: "Zgodność",
+                reason: '❤️',
+                discordName: "Mirek Dybaś",
+                steamid: this._driversFromJson[index].steamid
+              });
+              jsonDriver = {};
+            }
+
+            return jsonDriver;
+          });
+          
+          return [commonDrivers, jsonDrivers];
+        } catch(err) {
+          console.error('error', err);
+        }
+
+      },
+
+      /** Funkcja do znajdowania wspólnych imion i nazwisk kierowców */
+      getCommonNameAndSurname(jsonDrivers, discordDrivers) {
+        try {
+          let commonDrivers = [];
+
+          jsonDrivers = jsonDrivers.map((jsonDriver, index) => {
+            if (Object.keys(jsonDriver).length === 0) return {};
+
+            const [jsonDriverName, jsonDriverSurname] = jsonDriver.fullName.split(' ');
+
+            let discordName = '';
+            const isCommon = discordDrivers.some((discordDriver, j) => {
+              const [discordDriverName, discordDriverSurname] = discordDriver.split(' ');
+
+              if (jsonDriverName === discordDriverName && jsonDriverSurname === discordDriverSurname) {
+                discordName = this._originalDriversDiscord[j];
+                return true;
+              } else {
+                return false;
+              }
+            });
+
+            // Jeśli dane kierowcy wspólne, dodaj go
+            if (isCommon) {
+              commonDrivers.push({
+                fullName: this._driversFromJson[index].fullName,
+                mark: 'driver-common',
+                markText: "Zgodność",
+                reason: 'Zgodność imienia i nazwiska kierowcy',
+                discordName: discordName,
+                steamid: this._driversFromJson[index].steamid,
+              });
+              jsonDriver = {};
+            }
+
+            return jsonDriver;
+          });
+
+          // Filtruj kierowców, którzy nie są wspólni
+          // const remainingDrivers = jsonDrivers.filter(jsonDriver => {
+          //   const [jsonDriverName, jsonDriverSurname] = jsonDriver.split(' ');
+
+          //   return !discordDrivers.some(discordDriver => {
+          //     const [discordDriverName, discordDriverSurname] = discordDriver.split(' ');
+          //     return jsonDriverName === discordDriverName && jsonDriverSurname === discordDriverSurname;
+          //   });
+          // });
+
+
+          return [commonDrivers, jsonDrivers];
+        } catch(err) {
+          alert(MSG_ERR_COMMONDRIVERS);
+          console.error('err commonNameAndSurname', err);
+        }
+      },
+
+      /** Funkcja do znajdowania wspólnych imion i nazwisk kierowców, gdzie w środku jest ksywka/nickname */
+      getCommonNicknameInMiddle(jsonDrivers, discordDrivers) {
+        try {
+          let commonDrivers = [];
+
+          jsonDrivers = jsonDrivers.map((jsonDriver, index) => {
+            if (Object.keys(jsonDriver).length === 0) return {};
+
+            const [jsonDriverName, jsonDriverNickname, jsonDriverSurname] = jsonDriver.fullName.split(' ');
+            
+            let discordName = '';
+            const isCommon = discordDrivers.some((discordDriver, j) => {
+              const [discordDriverName, discordDriverNickname, discordDriverSurname] = discordDriver.split(' ');
+              
+              // musi się znajdować nickname
+              if (!jsonDriverSurname && !discordDriverSurname) return false;
+
+              // imie musi sie zgadzać
+              if (jsonDriverName !== discordDriverName) return false;
+
+
+              
+              // json.ksywka === discord.ksywka   LUB
+              // json.ksywka === discord.nazwisko LUB
+              // json.nazwisko === discord.ksywka LUB
+              // json.nazwisko === discord.nazwisko
+              if (jsonDriverNickname  === discordDriverNickname 
+              || jsonDriverNickname   === discordDriverSurname
+              || jsonDriverSurname    === discordDriverNickname
+              || jsonDriverSurname    === discordDriverSurname
+              ) {
+                discordName = this._originalDriversDiscord[j];
+                return true;
+              }
+              return false;
+            });
+
+            // Jeśli dane kierowcy wspólne, dodaj go
+            if (isCommon) {
+              commonDrivers.push({
+                fullName: this._driversFromJson[index].fullName,
+                mark: 'driver-unsure',
+                markText: "Obiekcja",
+                reason: 'Imię i nazwisko kierowcy zgodne, ale ksywka w środku',
+                discordName: discordName,
+                steamid: this._driversFromJson[index].steamid,
+              });
+              jsonDriver = {};
+            }
+
+            return jsonDriver;
+          });
+
+          return [commonDrivers, jsonDrivers];
+        } catch(err) {
+          alert(MSG_ERR_COMMONDRIVERS);
+          console.error('err commonNameAndSurname', err);
+        }
+      },
+
+      /** funkcja do znajdowania wspólych nazwisk kierowców, gdzie pierwsza litera jest taka sama */
+      getCommonSurnameWithLetter(jsonDrivers, discordDrivers) {
+        try {
+          let commonDrivers = [];
+
+          jsonDrivers = jsonDrivers.map((jsonDriver, index) => {
+            if (Object.keys(jsonDriver).length === 0) return {};
+
+            // split po każdym znaku innym niż a-Z0-9 
+            const [jsonDriverName, jsonDriverSurname] = jsonDriver.fullName.split(/\W/g);
+
+
+            let discordName = '';
+            const isCommon = discordDrivers.some((discordDriver, j) => {
+              const [discordDriverName, discordDriverSurname] = discordDriver.split(/\W/g);
+              
+              // jeżeli nazwisko niezgodne - przerwij
+              if (jsonDriverSurname !== discordDriverSurname
+                || Array.from(jsonDriverName)[0] !== Array.from(discordDriverName)[0]
+              ) {
+                return false;
+              } else {
+                discordName = this._originalDriversDiscord[j];
+                return true;
+              }
+            });
+
+            // Jeśli dane kierowcy wspólne, dodaj go
+            if (isCommon) {
+              commonDrivers.push({
+                fullName: this._driversFromJson[index].fullName,
+                mark: 'driver-unsure',
+                markText: "Obiekcja",
+                reason: 'Nazwisko i pierwsza litera kierowcy zgodne',
+                discordName: discordName,
+                steamid: this._driversFromJson[index].steamid,
+              });
+              jsonDriver = {};
+            }
+
+            return jsonDriver;
+          });
+
+
+          // dodatkowo: wyszukaj wspólne nazwiska kierowców, gdzie na początku jest ksywka/nickname */
+          // dodaktowo: wyłącznie pierwsza litera imienia musi się zgadzać
+          jsonDrivers = jsonDrivers.map((jsonDriver, index) => {
+            if (Object.keys(jsonDriver).length === 0) return {};
+
+            // split po każdym znaku innym niż a-Z0-9 
+            let [jsonDriverNickname, jsonDriverName, jsonDriverSurname] = jsonDriver.fullName.split(/\W/g);
+
+            let discordName = '';
+            const isCommon = discordDrivers.some((discordDriver, j) => {
+              let [discordDriverNickname, discordDriverName, discordDriverSurname] = discordDriver.split(/\W/g);
+
+              // console.log('kierowca json', jsonDriver);
+              // console.log('kierowca dc', discordDriver);
+              if (!jsonDriverSurname && !discordDriverSurname) return false;
+
+              if (!jsonDriverSurname) {
+                jsonDriverSurname = jsonDriverName;
+                jsonDriverName = jsonDriverNickname;
+                jsonDriverNickname = '';
+              }
+              if (!discordDriverSurname) {
+                discordDriverSurname = discordDriverName;
+                discordDriverName = discordDriverNickname;
+                discordDriverNickname = '';
+              }
+
+              // json.ksywka === discord.ksywka   LUB
+              // json.ksywka === discord.nazwisko LUB
+              // json.nazwisko === discord.ksywka LUB
+              // json.nazwisko === discord.nazwisko
+              if ((jsonDriverNickname !== '' && jsonDriverNickname  === discordDriverNickname) 
+              || (jsonDriverNickname !== '' && jsonDriverNickname   === discordDriverSurname)
+              || (jsonDriverSurname    === discordDriverNickname && discordDriverNickname !== '')
+              || (jsonDriverSurname    === discordDriverSurname)
+              && (Array.from(jsonDriverName)[0] === Array.from(discordDriverName)[0])
+              ) {
+                // console.log('zwracam true dla pierwsza litera zgodna, json, kierowca:', jsonDriverNickname, jsonDriverName, jsonDriverSurname);
+                // console.log('zwracam true dla pierwsza litera zgodna, discord, kierowca:', discordDriverNickname, discordDriverName, discordDriverSurname);
+                // console.log('array from zgodne', Array.from(jsonDriverName)[0] === Array.from(discordDriverName)[0]);
+                discordName = this._originalDriversDiscord[j];
+
+                return true;
+              } else {
+                return false;
+              }
+            });
+
+            // Jeśli dane kierowcy wspólne, dodaj go
+            if (isCommon) {
+              commonDrivers.push({
+                fullName: this._driversFromJson[index].fullName,
+                mark: 'driver-unsure',
+                markText: "Obiekcja",
+                reason: 'Nazwisko i pierwsza litera kierowcy zgodna, ale ksywka na początku imienia',
+                discordName: discordName,
+                steamid: this._driversFromJson[index].steamid,
+              });
+              jsonDriver = {};
+            }
+
+            return jsonDriver;
+          });
+
+
+
+          return [commonDrivers, jsonDrivers];
+        } catch(err) {
+          alert(MSG_ERR_COMMONDRIVERS);
+          console.error('err getCommonSurnameWithLetter', err);
+        }
+      },
+
+
+      /** funkcja do znajdowania WYŁĄCZNIE wspólych nazwisk kierowców */
+      getCommonSurname(jsonDrivers, discordDrivers) {
+        try {
+          let commonDrivers = [];
+
+          jsonDrivers = jsonDrivers.map((jsonDriver, index) => {
+            if (Object.keys(jsonDriver).length === 0) return {};
+
+            // split po każdym znaku innym niż a-Z0-9 
+            let [jsonDriverName, jsonDriverSurname] = jsonDriver.fullName.split(/\W/g);
+              if (!jsonDriverSurname) {
+                jsonDriverSurname = jsonDriverName;
+                jsonDriverName = '';
+              }
+
+            let discordName = '';
+            const isCommon = discordDrivers.some((discordDriver, j) => {
+              let [discordDriverName, discordDriverSurname] = discordDriver.split(/\W/g);
+              if (!discordDriverSurname) {
+                discordDriverSurname = discordDriverName;
+                discordDriverName = ''
+              }
+              
+              // jeżeli nazwisko niezgodne - przerwij
+              return discordDriverSurname === jsonDriverSurname;
+            });
+
+            // Jeśli dane kierowcy wspólne, dodaj go
+            if (isCommon) {
+              commonDrivers.push({
+                fullName: this._driversFromJson[index].fullName,
+                mark: 'driver-unsure',
+                markText: "Obiekcja",
+                reason: 'Wyłącznie nazwisko kierowcy zgodne',
+                discordName: discordName,
+                steamid: this._driversFromJson[index].steamid,
+              });
+              jsonDriver = {};
+            }
+
+            return jsonDriver;
+          });
+
+          return [commonDrivers, jsonDrivers];
+        } catch(err) {
+          alert(MSG_ERR_COMMONDRIVERS);
+          console.error('err getCommonSurname', err);
+        }
+      },
+
+
+      //// LISTENERS
+
+      // Dodajemy nasłuchiwacz zdarzenia 'change' na input typu file
+      addFileInputListener() {
+        const HTML_jsonFile = document.querySelector('#jsonFile');
+        const HTML_jsonDrivers = document.querySelector('#jsonDrivers');
+
+        HTML_jsonFile.addEventListener('change', (event) => {
+          const file = event.target.files[0]; // Pobieramy pierwszy wybrany plik
+
+          if (file) {
+            const reader = new FileReader(); // Tworzymy nowy obiekt FileReader
+            
+            // Definiujemy, co ma się stać po załadowaniu pliku
+            reader.onload = (e) => {
+              try {
+                // console.log('e.targ', e.target)
+                const data = JSON.parse(e.target.result); // Parsowanie zawartości pliku jako JSON
+                // console.log('data', data)
+                const drivers = utils.extractNamesFromJSON(data); // Wywołujemy funkcję do ekstrakcji imion i nazwisk z JSON
+                // const normalizedDrivers = drivers.map(driver => utils.normalizeName(driver));
+
+                // this._driversFromJson = normalizedDrivers;
+                // this._driversFromJson     = drivers;
+                this._driversFromJson = drivers;
+                jsonFileObj.setFile(data);
+
+                this.displayJsonDrivers();
+              } catch (err) {
+                HTML_jsonDrivers.textContent = 'Błąd w odczycie pliku. Upewnij się, że plik jest poprawnym JSON-em.'; // Błąd parsowania
+                console.error('addFileInputListener', err);
+              }
+            };
+
+            reader.readAsText(file); // Czytamy plik jako tekst
+          } else {
+            HTML_jsonDrivers.textContent = 'Nie wybrano pliku.'; // Informacja o braku pliku
+          }
+        });
+      },
+
+      // nasłuchiwacz dla kierowców z discorda
+      addTextInputListener() {
+        try {
+          const discordContent  = document.querySelector('#discordDrivers');
+          discordContent.addEventListener('change', (event) => {
+            const drivers = event?.target?.value?.split('\n');
+            
+            const normalizedDrivers = drivers.map((driver) => utils.normalizeName(driver));
+            // console.log('drfromdc', normalizedDrivers);
+            
+            
+            this._driversFromDiscord      = normalizedDrivers;
+            this._originalDriversDiscord  = drivers;
+          });
+        } catch(err) {
+          alert('wystąpił nieznany błąd! zgłoś administratorowi.')
+          console.error('addFileInputListener', err);
+        }
+
+      },
+
+      addExecuteButtonListener() {
+        const executeButton = document.querySelector('#executeButton');
+        executeButton.addEventListener('click', () => this.executeCommonDrivers());
+      },
+
+      /// przypisywanie wartości z klas prywatnych
+      setCommonDrivers() {
+        const normalizedDriversFromJson     = this._driversFromJson?.map((driver) => {return {fullName: utils.normalizeName(driver.fullName), steamid: driver.steamid}});
+        const normalizedDriversFromDiscord  = this._driversFromDiscord?.map((driver) => utils.normalizeName(driver));
+
+        let dybasDrivers = [], nicknameInMiddleDrivers = [], otherDrivers = [], nameAndSurnameDrivers = [], surnameWithLetterDrivers = [], surnameDrivers = [];
+         
+        // console.log('drdisc', this._driversFromDiscord)
+        // console.log('drjson', this._driversFromJson)
+
+        // console.log('normalized dr discord', normalizedDriversFromDiscord);
+        // console.log('normalized dr json', normalizedDriversFromJson);
+
+        [dybasDrivers, otherDrivers] = this.getCommonDybas(normalizedDriversFromJson, normalizedDriversFromDiscord);
+        
+        // console.log('dybas', dybasDrivers);
+        // console.log('other', otherDrivers);
+
+      
+        [nameAndSurnameDrivers, otherDrivers] = this.getCommonNameAndSurname(otherDrivers, normalizedDriversFromDiscord);
+        
+        // console.log('nameAndSurnameDrivers', nameAndSurnameDrivers);
+        // console.log('other', otherDrivers);
+
+        [nicknameInMiddleDrivers, otherDrivers] = this.getCommonNicknameInMiddle(otherDrivers, normalizedDriversFromDiscord);
+
+        // console.log('po common middle', nicknameInMiddleDrivers, otherDrivers);
+
+
+        [surnameWithLetterDrivers, otherDrivers] = this.getCommonSurnameWithLetter(otherDrivers, normalizedDriversFromDiscord);
+      
+        // console.log('po surnamewithletter surname', surnameWithLetterDrivers);
+        console.log('po surnamewithletter other', otherDrivers);
+
+        [surnameDrivers, otherDrivers] = this.getCommonSurname(otherDrivers, normalizedDriversFromDiscord);
+        console.log('po surname other', otherDrivers);
+
+
+        // nie udało się powiązać nazwisk dla reszty kierowców - oznacz jako brak kierowcy
+        let othersMapped = [];
+        otherDrivers
+          .map((driver, index) => {
+            if (Object.keys(driver).length === 0) return {};
+            othersMapped.push({fullName: this._driversFromJson[index].fullName, steamid: driver.steamid, markText: "Brak", mark: 'driver-absent', reason: 'Brak kierowcy w liście potwierdzeń'})
+          })
+          .filter(driver => driver === undefined || Object.keys(driver).length !== 0)
+
+        // testy
+        this._resultDrivers = [
+          ...dybasDrivers,
+          ...nameAndSurnameDrivers,
+          ...nicknameInMiddleDrivers,
+          ...surnameWithLetterDrivers,
+          ...surnameDrivers,
+          ...othersMapped
+        ];
+        // console.log('resultDrivers', this._resultDrivers);
+
+      },
+
+      setDriversFromDiscord(drivers) {
+        this._driversFromDiscord = drivers;
+      },
+
+      setOriginalDriversDiscord(drivers) {
+        this._originalDriversDiscord = drivers;
+      },
+
+      updateDriversCount() {
+        const HTML_common = document.querySelector('#drivers-common-count');
+        const HTML_unsure = document.querySelector('#drivers-unsure-count');
+        const HTML_absent = document.querySelector('#drivers-absent-count');
+
+        const commonCount = document.querySelectorAll('.driver-common').length;
+        const unsureCount = document.querySelectorAll('.driver-unsure').length;
+        const absentCount = document.querySelectorAll('.driver-absent').length;
+
+        HTML_common.innerHTML = commonCount;
+        HTML_unsure.innerHTML = unsureCount;
+        HTML_absent.innerHTML = absentCount;
+      },
+
+      /// pobieranie wartości z klas prywatnych
+      getDriversFromJson() {
+        return this._driversFromJson;
+      },
+      
+      getDriversFromJson() {
+        return this._driversFromDiscord;
+      },
+
+      getResultDrivers() {
+        return this._resultDrivers;
+      }
+
+
+    };
+
+   
+    window.utils = window.utils || {
+      // Funkcja do normalizacji tekstu (usuniecie polskich znaków, spacje itp.)
+      normalizeName(name) {
+        return name
+          .toLowerCase()
+          .replace(/[ąćęłńóśźż]/g, char => {
+            // const map = { 'ą': 'a', 'ć': 'c', 'ę': 'e', 'ł': 'l', 'ń': 'n', 'ó': 'o', 'ś': 's', 'ź': 'z', 'ż': 'z' };
+            const map = { 'ą': 'a', 'ć': 'c', 'ę': 'e', 'ł': '', 'ń': 'n', 'ó': 'o', 'ś': 's', 'ź': 'z', 'ż': 'z' };
+
+            return map[char];
+          })
+          .replace(/[^a-z\s]/g, ' ') // zamiana wszystkich znaków poza literami na spację
+          .replace(/\s+/g, ' ') // zamiana dwóch spacji na jedną
+          .trim();
+      },
+
+      // Funkcja do ekstrakcji imion i nazwisk z obiektu JSON
+      extractNamesFromJSON(data) {
+        const names = [];
+        data.entries.forEach(driver => {
+            if (driver.drivers[0].firstName && driver.drivers[0].lastName) {
+              names.push({fullName: `${driver.drivers[0].firstName} ${driver.drivers[0].lastName}`, steamid: driver.drivers[0].playerID});
+            }
+        });
+        return names;
+      },
+
+      clearForm() {
+        // const HTML_Inputs = [
+        //   ...document.querySelectorAll('input'),
+        //   ...document.querySelectorAll('textarea')
+        // ];
+
+        // for (let HTML_Input of HTML_Inputs) {
+        //   HTML_Input.innerHTML = '';
+        //   HTML_Input.value = '';
+        // }
+        const discordContent  = document.querySelector('#discordDrivers');  
+        const discordDrivers = discordContent.value?.split('\n');
+
+        const normalizedDrivers = discordDrivers.map((driver) => utils.normalizeName(driver));
+        drivers.setDriversFromDiscord(normalizedDrivers);
+        drivers.setOriginalDriversDiscord(discordDrivers);
+        console.info('gotowe');
+      }
+
+    };
+    
+
+    window.jsonFileObj = window.jsonFileObj || {
+      _FILE: '',
+
+      addTextClickEventListener() {
+        const HTML_Button = document.querySelector('#json-file-prepare-btn');
+        const HTML_Textarea = document.querySelector('#json-file-text');
+
+        HTML_Button.addEventListener('click', () => this.jsonFilePrepareCopy());
+        HTML_Textarea.addEventListener('click', () => this.jsonFilePrepareCopy());
+      },
+
+      jsonFilePrepareCopy() {
+        try {
+            // wszyscy kierowcy oznaczeni kolorem zielonym
+            const commonDrivers = Array.from(document.querySelectorAll('.result-driver.driver-common'));
+            
+            const filteredFile = this.filterFile(commonDrivers);
+            const newFile = JSON.stringify(filteredFile);
+
+            // this.setFile(filteredFile);
+            navigator.clipboard.writeText(newFile);
+
+            const HTML_Textarea = document.querySelector('#json-file-text');
+            HTML_Textarea.value = newFile;
+
+            notify.show('✅ Pomyślnie skopiowano entrylistę.');
+          } catch(err) {
+            notify.show('❌ Błąd podczas kopiowania entrylisty!');
+            console.error('err', err);
+          }
+      },
+
+      /** funkcja filtrująca plik przez otrzymane obiekty HTML
+       * filtrowanie na podstawie steamid
+      */
+      filterFile(drivers) {
+        // return {
+          // ...this._FILE,
+          // entries: this._FILE.entries
+              // .filter(jsonDriver => drivers.some(commonDriver => commonDriver.getAttribute('steamid') === jsonDriver.drivers[0].playerID))
+        // }
+        return {
+          ...this._FILE,
+          entries: this._FILE.entries
+            .filter(entry => entry.drivers
+              .some(driver => drivers
+                .some(commonDriver => commonDriver.getAttribute('steamid') === driver.playerID)))
+        };
+
+
+      },
+
+      getFile() {
+        return this._FILE;
+      },
+      setFile(FILE) {
+        this._FILE = FILE;
+      }
+
+    };
+
+    window.notify = window.notify || {
+      show(header, main = '') {
+        const notification = document.querySelector('#notification');
+        const headerElement = document.querySelector('#notification-header');
+
+        headerElement.textContent = header;
+
+        // Pokaż powiadomienie (przesuń na dół)
+        notification.style.top = '20px'; // wysokość, na jaką ma się zsunąć
+
+        // Ukryj powiadomienie po 3 sekundach
+        setTimeout(() => {
+            notification.style.top = '-200px';
+        }, 3000);
+    }
+};
+
+
+
+    // listenery dla listy kierowców
+    drivers.addFileInputListener();
+    drivers.addTextInputListener();
+    drivers.addExecuteButtonListener();
+
+    jsonFileObj.addTextClickEventListener();
+
+    utils.clearForm();
+</script>
+
+</body>
+</html>
